@@ -3,7 +3,7 @@
 Collaborative filtering based recommender system with a matrix factorization model.
 
 ## Authors
-- Luis Jibaja
+- Luis Jibaja [@lijbajap](https://github.com/ljibajap)
 - Noah Teshima
 
 ## Overview
