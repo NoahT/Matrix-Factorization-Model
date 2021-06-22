@@ -1,54 +1,35 @@
 from Model import Model
 import numpy as np
-import pandas as pd
 
+'''
+@author Noah Teshima
+'''
 class MatrixFactorizationModel(Model):
-    def __init__(self, relpath):
-        self.data = pd.read_csv(relpath)
+    def __init__(self, data, train_prop=.4, validation_prop=.4, test_prop=.2):
+        super().__init__(data, train_prop, validation_prop, test_prop)
 
-    def data_split(self, S, split=.5) -> tuple:
-        S_perm = np.copy(S)
-        np.random.shuffle(S_perm)
-        l = S_perm.shape[0]
-        train_index = int(l * split)
-        train = S_perm[:train_index]
-        test = S_perm[train_index:]
-        return(train, test)
-
-    '''
-    Train/Validation/Test split for data given by S.
-    Default split is 40/40/20
-    '''
-    def train_validation_test_split(self, S, train_prop=.4, validation_prop=.4, test_prop=.2) -> tuple:
-        if (train_prop + validation_prop + test_prop != 1):
-            raise Exception
-        (pseudo_train, test) = self.data_split(S, split=(train_prop+validation_prop))
-        (train, validation) = self.data_split(pseudo_train, split=(train_prop / (train_prop + validation_prop)))
-        return (train, validation, test)
-
-    '''
-    K-fold cross validation.
-    '''
-    def k_foldCV(self, S, k=10) -> object:
-        S_perm = np.copy(S)
-        np.random.shuffle(S_perm)
-        N = S_perm.shape[0]
-        size = int(N / k)
-        r = N % k
-        folds = []
-        index = 0
-        for i in range(k):
-            if r > 0:
-                folds.append(S_perm[index:(index+size + 1)])
-                r = r - 1
-                index = index + size + 1
-            else:
-                folds.append(S_perm[index:(index+size)])
-                index = index + size
-        return np.array(folds)
     
     def calc_loss(self, E):
         return np.linalg.norm(E, ord='fro')**2
+    
+    '''
+    Input:
+        S is a collection of 3-tuples (user, item, rating)
+            user is the index of the user in list_user
+            item is the index of the item in list_items
+            rating is the corresponding rating
+        Output: mxn feedback matrix
+            m is the length of list_user
+            n is the length of list_item
+            Entry (i, j) is nonzero if list_user[i] reviewed list_item[j]
+    '''
+    def build_feedback_matrix(self, S, list_users, list_items):
+        m = list_users.shape[0]
+        n = list_items.shape[0]
+        F = np.zeros((m, n))
+        for (user_index, item_index, rating) in S:
+            F[user_index, item_index] = rating
+        return F
 
     '''
     Batch gradient descent algorithm.
@@ -71,6 +52,7 @@ class MatrixFactorizationModel(Model):
         for i in np.arange(1, K):
             E = F - (U @ V.T) # Residual matrix
             iter_cost = self.calc_loss(E)
+            print('Frobenius norm: ', iter_cost)
             cost.append(iter_cost)
             # Intermediate U and V to insure simultaneous step
             U_new = U + (alpha * (E @ V))
@@ -79,32 +61,13 @@ class MatrixFactorizationModel(Model):
             V = V_new
         
         return (U, V, cost)
-
-    '''
-    Calculate the MSE of F_hat with respect to F
-    S is a list of 3-tuples (i, j, rating)
-    We calculate the MSE over cells (i, j) found in S.
-    '''
-    def MSE(self, S, F, F_hat) -> float:
-        # size of MSE calculation
-        N = S.shape[0]
-        mse = 0
-        for (row, col, r) in S:
-            residual = F_hat[row, col] - F[row, col]
-            mse = mse + (residual**2)
-        mse = mse / N
-        return mse
-
-    def split(self, train, val, test) -> None:
-        self.
-
-    def train(self) -> None:
-        pass
+    
+    def train(self, list_users, list_items, alpha, K, d) -> None:
+        F_train = self.build_feedback_matrix(super().get_training_data(), list_users, list_items)
+        self.F_train = F_train
+        self.model = self.gradient_descent(F_train, alpha, K, d)
 
     def test(self) -> object:
-        pass
-
-    def getModel(self) -> object:
-        pass
+        return self.model[2]
 
 
